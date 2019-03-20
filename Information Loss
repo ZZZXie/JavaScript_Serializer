@@ -1,0 +1,62 @@
+Pre: Create a dictionary to store global functions
+
+
+1. 
+Check constructor name to determine if the variable is created via built-in prototypes (Fuction, Object, etc.)
+	function b() { this.a = 1; }; var c = new b();
+	b.var1 = 10;
+	b.var2 = "hello";
+	c.var1 = 1;
+
+	c.name = b
+	b.name = Function
+
+	NOTE: If we check Object.getOwnPropertyNames(c) has only [a] which does not help.
+
+2. 
+Two cases, if it is inherited from built-int types
+	If it is a built in type (Function)
+		check Object.getOwnPropertyNames(b) and store variables starting from 6th entry in returned
+			example: returned ["length", "name", "arguments", "caller", "prototype", "var", "var2"], store var1 and var2
+	If it is not a built-in type such as c
+		check Object.getOwnPropertyNames(c) and store the values(This needs further investigation) but also store the constructor of c
+			example: returned ["a", "b", "var1"]
+			c.constructor.toString()
+			Recursively find __proto__.constructor until a built-in constructor is found.
+
+
+
+
+
+
+3.
+Crop out function body:
+
+var entire = derp.toString(); 
+var body = entire.slice(entire.indexOf("{") + 1, entire.lastIndexOf("}"));
+
+console.log(body); // "a(); b(); c();"
+
+
+
+4. Interesting Edge-case
+
+function foo(bar) {
+    return function() {
+        alert(bar);
+    };
+}
+var f1 = foo("one");
+var f2 = foo("two");
+f1();                                         // alerts "one"
+f2();                                         // alerts "two"
+console.log(f1.toString() === f2.toString()); // true
+
+
+5. A function declaration has two scenarios: One is globally defined, and the other is a function defined as a variable.
+ Two cases should be handled differently
+
+6. For stringifying normal function objects/ variables
+	var a =
+	First 
+
