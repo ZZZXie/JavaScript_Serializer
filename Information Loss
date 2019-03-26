@@ -43,20 +43,26 @@ console.log(body); // "a(); b(); c();"
 
 function foo(bar) {
     return function() {
+    return [function() {
         alert(bar);
-    };
+    }, function set(arg){bar = arg;}]
 }
-var f1 = foo("one");
-var f2 = foo("two");
+var f = foo(1)
+var f1 = f[0]
+var f2 = f[1]
+
 f1();                                         // alerts "one"
-f2();                                         // alerts "two"
+f2(4);
+f1();
+                                         // alerts "two"
 console.log(f1.toString() === f2.toString()); // true
 
 
 5. A function declaration has two scenarios: One is globally defined, and the other is a function defined as a variable.
  Two cases should be handled differently
 
-6. For stringifying normal function objects/ variables
-	var a =
+6. For stringifying normal function objects or variables, we need to store
+Function declaration (including name, arguments and body); Function objects keys (use Object.keys()); Scan through all functions
+	var a = function(a, b) {}
 	First 
 

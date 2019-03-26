@@ -29,3 +29,8 @@ ComplexSerializer.toObject(cleanedWindow, parsedWindow);
 
 ## Current Issue
 Some information is still lost during stringification and needs to be investigated case by case. Code for parsing back is still not complete.
+
+## Serializing Object and Functions
+This page discusses how to serialize objects and is a good reference:  
+https://nullprogram.com/blog/2013/03/11/  
+

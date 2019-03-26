@@ -24,6 +24,19 @@ function regexStringify (reg) {
 var ComplexSerializer = {
     objectToString: function (value, objCopy) {
       objCopy["_MemberVarTypes"] = {};
+      // Check if this object is Object prototype
+      if (value.constructor === Object.prototype.constructor) {
+        objCopy["#"] = Object.prototype.constructor.name;
+      }
+      // Function is native function and also present in window object
+      else if (value.constructor.name in window && isNativeFunction(value.constructor)) {
+        objCopy["#"] = Object.prototype.constructor.name;
+      }
+      // Here assume the other case is function is 
+      else {
+        objCopy["#"] = value.constructor.toString();
+      }
+      // Loop through all keys in this object
       for (var name in value) {
         if (value.hasOwnProperty(name)){
           var objectName = Object.prototype.toString.call(value[name]);
@@ -70,8 +83,9 @@ var ComplexSerializer = {
                 objCopy["_MemberVarTypes"][name] = "native function";
               }
               else {
-                objCopy[name] = JSONfn.stringify(value[name]);
+                objCopy[name] = value[name].toString();
                 objCopy["_MemberVarTypes"][name] = "function";
+
               } 
               break;
 
@@ -140,7 +154,7 @@ var ComplexSerializer = {
 
           case "Function":
             // TODO: Handle native function cases
-            objCopy[i] = {"_type" : "function", "_value": JSONfn.stringify(value[i])};
+            objCopy[i] = {"_type" : "function", "_value": value[i].toString()};
             break;
 
           case "RegExp":
@@ -191,7 +205,7 @@ var ComplexSerializer = {
                 objCopy[name] = null;
                 break;
               case "function":
-                objCopy[name] = JSONfn.parse(value[name]);
+                objCopy[name] = parseFunction(value[name]);
                 break;
               case "native function":
                 // TODO: build the connection to the native function

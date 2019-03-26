@@ -56,7 +56,9 @@ function parseDate(str) {
 	return new Date(str);
 }
 
-
+function parseFunction(str) {
+	return new Function("return" + str)();
+}
 
 
 
