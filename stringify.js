@@ -56,6 +56,8 @@ function parseDate(str) {
 	return new Date(str);
 }
 
+//https://stackoverflow.com/questions/7650071/is-there-a-way-to-create-a-function-from-a-string-with-javascript
+
 function parseFunction(str) {
 	return new Function("return" + str)();
 }

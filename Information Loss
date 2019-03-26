@@ -42,7 +42,6 @@ console.log(body); // "a(); b(); c();"
 4. Interesting Edge-case
 
 function foo(bar) {
-    return function() {
     return [function() {
         alert(bar);
     }, function set(arg){bar = arg;}]

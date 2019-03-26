@@ -83,9 +83,23 @@ var ComplexSerializer = {
                 objCopy["_MemberVarTypes"][name] = "native function";
               }
               else {
-                objCopy[name] = value[name].toString();
+                objCopy[name] = {};
+                objCopy[name]["func_str"] = value[name].toString();
+                objCopy[name]["keys"] = {};
                 objCopy["_MemberVarTypes"][name] = "function";
-
+                var func_keys = Object.keys(value[name]);
+                if (func_keys.length > 0) {
+                  // TODO: store all keys, now only support functions and variables
+                  // Variables in a function can be objects, can be any type
+                  for (var i = 0; i < func_keys.length; i++) {
+                    if (value[name][func_keys[i]] instanceof Function) {
+                      objCopy[name]["keys"][func_keys[i]] = value[name][func_keys[i]].toString();
+                    }
+                    else {
+                      objCopy[name]["keys"][func_keys[i]] = value[name][func_keys[i]];
+                    }
+                  }
+                }
               } 
               break;
 
@@ -154,6 +168,7 @@ var ComplexSerializer = {
 
           case "Function":
             // TODO: Handle native function cases
+            // TODO: consider handling function variables
             objCopy[i] = {"_type" : "function", "_value": value[i].toString()};
             break;
 
