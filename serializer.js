@@ -24,6 +24,7 @@ function regexStringify (reg) {
 var ComplexSerializer = {
     objectToString: function (value, objCopy) {
       objCopy["_MemberVarTypes"] = {};
+      // https://nullprogram.com/blog/2013/03/11/
       // Check if this object is Object prototype
       if (value.constructor === Object.prototype.constructor) {
         objCopy["#"] = Object.prototype.constructor.name;
@@ -34,7 +35,22 @@ var ComplexSerializer = {
       }
       // Here assume the other case is function is 
       else {
-        objCopy["#"] = value.constructor.toString();
+        objCopy["#"] = {};
+        objCopy["#"]["func_str"] = value.constructor.toString();
+        objCopy["#"]["keys"] = {};
+        var func_keys = Object.keys(value.constructor);
+        if (func_keys.length > 0) {
+          // TODO: store all keys, now only support functions and variables
+          // Variables in a function can be objects, can be any type
+          for (var i = 0; i < func_keys.length; i++) {
+            if (value.constructor[func_keys[i]] instanceof Function) {
+              objCopy["#"]["keys"][func_keys[i]] = value.constructor[func_keys[i]].toString();
+            }
+            else {
+              objCopy["#"]["keys"][func_keys[i]] = value.constructor[func_keys[i]];
+            }
+          }
+        }
       }
       // Loop through all keys in this object
       for (var name in value) {
@@ -199,7 +215,21 @@ var ComplexSerializer = {
       }
     },
     toObject: function (value, objCopy) {
+      // First check objCopy["#"] and determine the prototype of this object
+      // If proto is in window and is a native constructor
+      // if (window.hasOwnProperty(value["#"] && isNativeFunction(window[value["#"]])) {
+      if (typeof value["#"] === "string") {
+        objCopy.__proto__ = window[value["#"]].prototype;
+      }
+      // Function constructor
+      else {
+        var newConstructor = parseFunction(objCopy["#"]["func_str"]);
+        for (2)
+        objCopy.constructor = 
+      }
+      // Loop through all vars in the object
       for (var name in value) {
+        // Exclude _MemberVarTypes during the loop
         if (value.hasOwnProperty(name) && name !== "_MemberVarTypes"){
           // If membertype has this var, we need to process that var
           if (value["_MemberVarTypes"].hasOwnProperty(name)) {
