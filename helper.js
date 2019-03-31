@@ -4,12 +4,6 @@
 // JSONfn.stringify(); For function stringification
 // JSONfn.parse();
 
-// function isFunction(functionToCheck)
-// function isPrimitive(test)
-// Object.size()
-
-
-
 if (typeof JSON.decycle !== "function") {
     JSON.decycle = function decycle(object, replacer) {
         "use strict";
@@ -221,43 +215,5 @@ var deserialiseFunctionJSON = function(data) {
   if (data instanceof String || typeof data == 'string')
     data = JSON.parse(data);
   return new (Function.bind.apply(Function, [Function].concat(data)));
-};
-
-
-/*********************************************************************/
-/*********************************************************************/
-
-
-//$$ isFunction() checks object type
-function isFunction(functionToCheck) {
- return functionToCheck && Function.prototype.toString.call(functionToCheck) === '[object Function]';
-}
-
-
-function isNativeFunction(func){
-    if (/\{\s+\[native code\]/.test( Function.prototype.toString.call(func))) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
-
-
-//$$ Test if the var is a primitive type
-function isPrimitiveBuiltIn(obj) {
-	if (obj instanceof RegExp) {
-		return true;
-	}
-    return (obj !== Object(obj));
-};
-
-//$$ Object.size()
-Object.size = function(obj) {
-    var size = 0, key;
-    for (key in obj) {
-        if (obj.hasOwnProperty(key)) size++;
-    }
-    return size;
 };
 
