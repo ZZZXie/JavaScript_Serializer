@@ -1,7 +1,55 @@
-// ***********************************
-// Serialization functions for values in object
-// ***********************************
-function objSerializeNumber(value, objCopy) {
+// *************************************
+//           Helper Functions
+// *************************************
+
+function isNativeFunction(func){
+    if (/\{\s+\[native code\]/.test( Function.prototype.toString.call(func))) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+function stringifyPrimitiveBuiltIn(obj) {
+  // If the value is null
+  if (obj === null)
+    return "null";
+
+  if (obj === undefined)
+    return "undefined";
+    
+  if (obj instanceof RegExp)
+    return obj.toString();
+    
+    return obj.toString();
+}
+
+function parsePrimitiveBuiltIn(str) {
+  return eval(str);
+}
+
+// Stringify Functions use: JSONfn.stringify and JSONfn.parse
+
+function stringifyDate(obj) {
+  return obj.toJSON();
+}
+
+function parseDate(str) {
+  return new Date(str);
+}
+
+//https://stackoverflow.com/questions/7650071/is-there-a-way-to-create-a-function-from-a-string-with-javascript
+function parseFunction(str) {
+  return new Function("return " + str)();
+}
+
+
+// *************************************
+// Serialization objects into stringifiable format
+// *************************************
+
+function objSerializeNumber(value, objCopy, name) {
   if (value[name] === Infinity) {
     objCopy[name] = "";
     objCopy["_MemberVarTypes"][name] = "infinity";
@@ -14,131 +62,110 @@ function objSerializeNumber(value, objCopy) {
   objCopy[name] = value[name];
 }
 
-function objSerializeString(value, objCopy) {
+function objSerializeString(value, objCopy, name) {
   // cache the type string for this variable
   objCopy[name] = value[name];
 }
 
-function objSerializeUndefined(value, objCopy) {
+function objSerializeUndefined(value, objCopy, name) {
   // Primitive but needs to get converted to string
   objCopy[name] = stringifyPrimitiveBuiltIn(value[name]);
   objCopy["_MemberVarTypes"][name] = "undefined";
 }
 
-function objSerializeNull(value, objCopy) {
+function objSerializeNull(value, objCopy, name) {
   objCopy[name] = stringifyPrimitiveBuiltIn(value[name]);
   objCopy["_MemberVarTypes"][name] = "null";
 }
 
-function objSerializeBool(value, objCopy) {
+function objSerializeBool(value, objCopy, name) {
   objCopy[name] = value[name];
 }
 
-function objSerializeRegExp(value, objCopy) {
-  objCopy[name] = regexStringify(value[name]);
+function objSerializeRegExp(value, objCopy, name) {
+  // pattern, and modifiers
+  // All Regex object have 2 main parts: Pattern and Modifiers. /pattern/modifiers
+  //The pattern can be extracted by calling this.source
+  //There are 3 types of modifiers i, m, g, corresponding to 3 properties: ignoreCase, multiline, global
+  // Example: var patt = /w3schools/i
+  // Obtain: {"p":"w3schools","m":"i"}
+  objCopy[name] = {"p": value[name].source, "m": ((value[name].global ? "g" : "") + (value[name].ignoreCase ? "i" : "") + (value[name].multiline ? "m" : ""))};
+  objCopy["_MemberVarTypes"][name] = "regex";
+
+  // For reconstruct: new RegExp(pattern, modifier);
 }
 
-function objSerializeDate(value, objCopy) {
+function objSerializeDate(value, objCopy, name) {
   objCopy[name] = stringifyDate(value[name]);
   objCopy["_MemberVarTypes"][name] = "date";
 }
 
-function objSerializeArray(value, objCopy) {
-  for (var i = 0; i < value.length; i++) {
-    var objectName = Object.prototype.toString(value[i]);
-    switch (objectName.substring(8, objectName.length - 1)) {
-      case "Number":
-        arrSerializeNumber(value, objCopy, i);
-        break;
+function objSerializeArray(value, objCopy, name) {
+  objCopy[name] = {}
+  objSerializeKeys(value[name], objCopy[name]);
+  objCopy["_MemberVarTypes"][name] = "array";
+}
 
-      case "String":
-        arrSerializeString(value, objCopy, i);
-        break;
-
-      case "Undefined":
-        arrSerializeUndefined(value, objCopy, i);
-        break;
-
-      case "Null":
-        arrSerializeNull(value, objCopy, i);
-        break;
-
-      case "Boolean":
-        arrSerializeBool(value, objCopy, i);
-        break;
-
-      case "Function":
-        // TODO: Handle native function cases
-        // TODO: consider handling function variables
-        objCopy[i] = {"_type" : "function", "_value": value[i].toString()};
-        break;
-
-      case "RegExp":
-        objCopy[i] = {"_type" : "regexp", "_value": regexStringify(value[i])};
-        // revert: new RegExp(JSON.parse(regexStringify(regex1)))
-        break;
-
-      case "Date":
-        objCopy[i] = {"_type" : "date", "_value": stringifyDate(value[i])};
-        break;
-
-      case "Object":
-        objCopy[i] = {};
-        ComplexSerializer.objectToString(value[i], objCopy[i]);
-        break;
-
-      case "Array":
-        // for array, loop through values, and handle non-stringifiable objects, etc
-        objCopy[i] = [];
-        ComplexSerializer.arrayToString(value[i], objCopy[i]);
-        break;
-
-      default:
-        objCopy[i] = objectName;
-        break;
-    }
+function objSerializeFunction(value, objCopy, name) {
+  // NOTE: This stringification of function will not work with closures!
+  if (isNativeFunction(value[name])) {
+    // I assume this native function leaves in window object
+    // So that the connection can be rebuilt by the function name
+    objCopy[name] = value[name].name;
+    objCopy["_MemberVarTypes"][name] = "native function";
   }
+  else {
+    objCopy[name] = {};
+    objCopy[name]["func_str"] = value[name].toString();
+    objCopy[name]["keys"] = {};
+    objCopy["_MemberVarTypes"][name] = "function";
+    var func_keys = Object.keys(value[name]);
+    if (func_keys.length > 0) {
+      objSerializeKeys(value[name], objCopy[name]["keys"]);
+    }
+  } 
 }
 
 function objSerializeKeys(value, objCopy) {
   // Loop through all keys in this object
-  for (var name in value) {
+  var keys = Object.keys(value);
+  for (var name in keys) {
     if (value.hasOwnProperty(name)){
       // Get the type of this value[name]
       var objectName = Object.prototype.toString(value[name]);
       // console.log(objectName.substring(8, objectName.length - 1));
       switch (objectName.substring(8, objectName.length - 1)) {
         case "Number":
-          objSerializeNumber(value, objCopy);
+          objSerializeNumber(value, objCopy, name);
           break;
 
         case "String":
-          objSerializeString(value, objCopy);
+          objSerializeString(value, objCopy, name);
           break;
 
         case "Undefined":
           // Primitive but needs to get converted to string
-          objSerializeUndefined(value, objCopy);
+          objSerializeUndefined(value, objCopy, name);
           break;
 
         case "Null":
-          objSerializeNull(value, objCopy);
+          objSerializeNull(value, objCopy, name);
           break;
 
         case "Boolean":
-          objSerializeBool(value, objCopy);
+          objSerializeBool(value, objCopy, name);
           break;
 
         case "Function":
-          objSerializeFunction(value, objCopy);
+          objSerializeFunction(value, objCopy, name);
           break;
 
         case "RegExp":
-          objSerializeRegExp(value, objCopy);
+          objSerializeRegExp(value, objCopy, name);
           break;
 
         case "Date":
-          objSerializeDate(value, objCopy);
+          objSerializeDate(value, objCopy, name);
           break;
 
         case "Object":
@@ -149,9 +176,7 @@ function objSerializeKeys(value, objCopy) {
 
         case "Array":
           // for array, loop through values, and handle non-stringifiable objects, etc
-          objCopy[name] = [];
-          objCopy["_MemberVarTypes"][name] = "array";
-          objSerializeArray(value[name], objCopy[name]);
+          objSerializeArray(value, objCopy, name);
           break;
 
         default:
@@ -181,169 +206,19 @@ function objSerializeObject(value, objCopy) {
     objCopy["#"]["keys"] = {};
     var func_keys = Object.keys(value.constructor);
     if (func_keys.length > 0) {
-      // TODO: store all keys, now only support functions and variables
-      // Variables in a function can be objects, can be any type
-      TODO
+      objSerializeKeys(value[name], objCopy["#"]["keys"]);
     }
   }
   // Serialize all keys in this object
-  serializeKeys(value, objCopy)
-}
-
-function serializeFunction(value, objCopy) {
-  // TODO
+  objSerializeKeys(value, objCopy);
 }
 
 
-// ***********************************
-// Serialization functions for values in array
-// ***********************************
+//************************************************//
+//   Convert parsed object back to original form
+//   Deserialization
+//************************************************//
 
-function arrSerializeNumber(value, objCopy, i) {
-  if (value[i] === Infinity) {
-    objCopy[i] = {"_type" : "infinity", "_value": "Infinity"};
-  }
-  if (value[i] === NaN) {
-    objCopy[i] = {"_type" : "nan", "_value": "NaN"};
-  }
-  // Do nothing
-  objCopy[i] = {"_type" : "number", "_value": value[i]};
-}
-
-function arrSerializeString(value, objCopy, i) {
-  // cache the type string for this variable
-  objCopy[i] = {"_type" : "string", "_value": value[i]};
-}
-
-function arrSerializeUndefined(value, objCopy, i) {
-  // Primitive but needs to get converted to string
-  objCopy[i] = {"_type" : "undefined", "_value": stringifyPrimitiveBuiltIn(value[i])};
-}
-
-function arrSerializeNull(value, objCopy, i) {
-  objCopy[i] = {"_type" : "null", "_value": stringifyPrimitiveBuiltIn(value[i])};
-}
-
-function arrSerializeBool(value, objCopy, i) {
-  objCopy[i] = {"_type" : "boolean", "_value": value[i]};
-}
-
-
-//  !!!!!!!!!!! TODO !!!!!!!!!!!
-function arrSerializeRegExp(value, objCopy, i) {
-  objCopy[name] = regexStringify(value[name]);
-}
-
-function arrSerializeDate(value, objCopy, i) {
-  objCopy[name] = stringifyDate(value[name]);
-  objCopy["_MemberVarTypes"][name] = "date";
-}
-
-function arrSerializeArray(value, objCopy) {
-
-}
-
-function arrSerializeKeys(value, objCopy) {
-  // Loop through all keys in this object
-  for (var name in value) {
-    if (value.hasOwnProperty(name)){
-      // Get the type of this value[name]
-      var objectName = Object.prototype.toString(value[name]);
-      // console.log(objectName.substring(8, objectName.length - 1));
-      switch (objectName.substring(8, objectName.length - 1)) {
-        case "Number":
-          serializeNumber(value, objCopy);
-          break;
-
-        case "String":
-          serializeString(value, objCopy);
-          break;
-
-        case "Undefined":
-          // Primitive but needs to get converted to string
-          serializeUndefined(value, objCopy);
-          break;
-
-        case "Null":
-          serializeNull(value, objCopy);
-          break;
-
-        case "Boolean":
-          serializeBool(value, objCopy);
-          break;
-
-        case "Function":
-          serializeFunction(value, objCopy);
-          break;
-
-        case "RegExp":
-          
-          // revert: new RegExp(JSON.parse(regexStringify(regex1)))
-          break;
-
-        case "Date":
-          objCopy[name] = stringifyDate(value[name]);
-          objCopy["_MemberVarTypes"][name] = "date";
-          break;
-
-        case "Object":
-          objCopy[name] = {};
-          ComplexSerializer.objectToString(value[name], objCopy[name]);
-          objCopy["_MemberVarTypes"][name] = "object";
-          break;
-
-        case "Array":
-          // for array, loop through values, and handle non-stringifiable objects, etc
-          objCopy[name] = [];
-          objCopy["_MemberVarTypes"][name] = "array";
-          ComplexSerializer.arrayToString(value[name], objCopy[name]);
-          break;
-
-        default:
-          objCopy[name] = objectName;
-          break;
-      }
-    }
-  }
-}
-
-function arrSerializeObject(value, objCopy) {
-  objCopy["_MemberVarTypes"] = {};
-  // https://nullprogram.com/blog/2013/03/11/
-  // Check if this object is Object prototype
-  if (value.constructor === Object.prototype.constructor) {
-    objCopy["#"] = Object.prototype.constructor.name;
-  }
-  // Function is native function and also present in window object
-  else if (value.constructor.name in window && isNativeFunction(value.constructor)) {
-    objCopy["#"] = Object.prototype.constructor.name;
-  }
-  // Here assume the other case is function is 
-  else {
-    objCopy["#"] = {};
-    objCopy["#"]["func_str"] = value.constructor.toString();
-    objCopy["#"]["keys"] = {};
-    var func_keys = Object.keys(value.constructor);
-    if (func_keys.length > 0) {
-      // TODO: store all keys, now only support functions and variables
-      // Variables in a function can be objects, can be any type
-      for (var i = 0; i < func_keys.length; i++) {
-        if (value.constructor[func_keys[i]] instanceof Function) {
-          objCopy["#"]["keys"][func_keys[i]] = value.constructor[func_keys[i]].toString();
-        }
-        else {
-          objCopy["#"]["keys"][func_keys[i]] = value.constructor[func_keys[i]];
-        }
-      }
-    }
-  }
-  // Serialize all keys in this object
-  serializeKeys(value, objCopy)
-}
-
-function arrSerializeFunction(value, objCopy) {
-
-}
 
 
 

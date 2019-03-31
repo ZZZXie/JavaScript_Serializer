@@ -63,4 +63,22 @@ function parseFunction(str) {
 }
 
 
+// NO need to use this, here just for reference in case I need it in the future.
+function regexStringify (reg) {
+  reg = reg instanceof RegExp ? reg.source : reg
+
+  if (typeof reg !== 'string') {
+    throw new Error('reg is not a string' + reg)
+  }
+
+  for (let i = 0, len = reg.length; i < len; i++) {
+    if (reg[i] === '\\' || reg[i] === '"') {
+      reg = reg.substring(0, i) + '\\' + reg.substring(i++)
+      len += 2
+    }
+  }
+  return '"' + reg + '"'
+}
+
+
 
