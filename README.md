@@ -21,7 +21,7 @@ var outputString = JSON.stringify(serializedWindow);
 // Parse back the window object based on cached string
 var parsedWindow = deserialize(serializedWindow);
 // array cannot be correctly parsed back currently such that retrocycle will not work
-// var retroCycledWindow = JSON.retrocycle(parsedWindow);
+var retroCycledWindow = JSON.retrocycle(parsedWindow);
 ```
 
 4. Simple Test case:
