@@ -8,6 +8,31 @@ I haven't had time to look into those issues yet
 3. This code is not considering if the input is containing cycles and will be handled by JSON.decycle in helper.js
 */
 
+// *************************************
+//           Public API
+// *************************************
+function serialize(obj) {
+  var objCopy = {};
+  if (obj instanceof Array) {
+    serializeArray(obj, objCopy);
+  }
+  else {
+    serializeObject(obj, objCopy);
+  }
+  return objCopy;
+}
+
+function deserialize(obj) {
+  var objCopy = {};
+  if (obj instanceof Array) {
+    objCopy = [];
+    deserializeArray(obj, objCopy);
+  }
+  else {
+    deserializeObject(obj, objCopy);
+  }
+  return objCopy;
+}
 
 
 // *************************************
@@ -135,10 +160,10 @@ function objSerializeFunction(value, objCopy, name) {
 function objSerializeKeys(value, objCopy) {
   // Loop through all keys in this object
   var keys = Object.keys(value);
-  for (var name in keys) {
+  for (var name of keys) {
     if (value.hasOwnProperty(name)){
       // Get the type of this value[name]
-      var objectName = Object.prototype.toString(value[name]);
+      var objectName = Object.prototype.toString.call(value[name]);
       // console.log(objectName.substring(8, objectName.length - 1));
       switch (objectName.substring(8, objectName.length - 1)) {
         case "Number":
@@ -184,7 +209,7 @@ function objSerializeKeys(value, objCopy) {
           // for array, loop through values, and handle non-stringifiable objects, etc
           objCopy[name] = {};
           objCopy["_MemberVarTypes"][name] = "array";
-          objSerializeArray(value[name], objCopy[name]);
+          serializeArray(value[name], objCopy[name]);
           break;
 
         default:
@@ -206,7 +231,7 @@ function serializeObject(value, objCopy) {
   }
   // Function is native function and also present in window object
   else if (value.constructor.name in window && isNativeFunction(value.constructor)) {
-    objCopy["#"] = Object.prototype.constructor.name;
+    objCopy["#"] = value.constructor.name;
   }
   // Here assume the other case is function is 
   else {
@@ -238,16 +263,17 @@ function serializeArray(value, objCopy) {
 
 function objDeserializeRegex(value, objCopy) {
   // pattern + modifiers
-  objCopy = new RegExp(value["p"], value["m"]);
+  objCopy = RegExp(value["p"], value["m"]);
+  // console.log(value["p"], value["m"], objCopy);
 }
 
-function objDeserializeFunction(value, objCopy, isNative) {
+function objDeserializeFunction(value, objCopy, name, isNative) {
   if (isNative) {
-    objCopy = window[value];
+    objCopy[name] = window[value[name]];
   }
   else {
-    objCopy = parseFunction(value["func_str"]);
-    objDeserializeKeys(value["keys"], objCopy);
+    objCopy[name] = parseFunction(value[name]["func_str"]);
+    objDeserializeKeys(value[name]["keys"], objCopy[name]);
   }
 }
 
@@ -257,7 +283,7 @@ function objDeserializeArray(value, objCopy) {
 
 function objDeserializeKeys(value, objCopy) {
   var keys = Object.keys(value);
-  for (var key in keys) {
+  for (var name of keys) {
     // Exclude _MemberVarTypes and # during the loop
     if (value.hasOwnProperty(name) && name !== "_MemberVarTypes" && name !== "#"){
       // If membertype has this var, we need to process that var
@@ -272,7 +298,7 @@ function objDeserializeKeys(value, objCopy) {
           // case "string":
           //   break;
           case "regex":
-            objDeserializeRegex(value[name], objCopy[name]);
+            objCopy[name] = new RegExp(value[name]["p"], value[name]["m"]);
             break;
           case "undefined":
             objCopy[name] = undefined;
@@ -281,11 +307,11 @@ function objDeserializeKeys(value, objCopy) {
             objCopy[name] = null;
             break;
           case "function":
-            objDeserializeFunction(value[name], objCopy[name], false);
+            objDeserializeFunction(value, objCopy, name, false);
             // objCopy[name] = parseFunction(value[name]);
             break;
           case "native function":
-            objDeserializeFunction(value[name], objCopy[name], true);
+            objDeserializeFunction(value, objCopy, name, true);
             // objCopy[name] = value[name];
             break;
           case "date":
@@ -294,10 +320,11 @@ function objDeserializeKeys(value, objCopy) {
           case "object":
             // traverse through objects
             objCopy[name] = {};
-            deserializeObj(value[name], objCopy[name]);
+            deserializeObject(value[name], objCopy[name]);
+            break;
           case "array":
             objCopy[name] = [];
-            objDeserializeArray(value[name], objCopy[name]);
+            deserializeArray(value[name], objCopy[name]);
             break;
           default:
             break;
@@ -305,7 +332,8 @@ function objDeserializeKeys(value, objCopy) {
       }
       // Otherwise, do nothing. The data should be parsed correctly
       else {
-      objCopy[name] = value[name];
+        // console.log(objCopy);
+        objCopy[name] = value[name];
       }
     }
   }

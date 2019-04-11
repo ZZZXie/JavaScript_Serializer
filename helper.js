@@ -1,9 +1,6 @@
 // JSON.decycle();
 // JSON.retrocycle();
 
-// JSONfn.stringify(); For function stringification
-// JSONfn.parse();
-
 if (typeof JSON.decycle !== "function") {
     JSON.decycle = function decycle(object, replacer) {
         "use strict";
